@@ -119,7 +119,7 @@ void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection,
 			{
 				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
 				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client.");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client. Code : " + (FString)FString::FromInt(RetVal));
 				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
 
 				MQTTClient_destroy(&TempClient);
@@ -139,7 +139,7 @@ void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection,
 			{
 				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
 				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while setting callbacks.");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while setting callbacks. Code : " + (FString)FString::FromInt(RetVal));
 				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
 
 				MQTTClient_destroy(&TempClient);
@@ -166,7 +166,7 @@ void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection,
 			{
 				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
 				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while making connection.");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while making connection. Code : " + (FString)FString::FromInt(RetVal));
 				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
 
 				MQTTClient_destroy(&TempClient);
