@@ -18,6 +18,11 @@ void AMQTT_Manager_Paho::BeginPlay()
 // Called when the game end or when destroyed.
 void AMQTT_Manager_Paho::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (this->Client)
+	{
+		this->MQTT_Destroy();
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -89,33 +94,126 @@ void AMQTT_Manager_Paho::ConnectionLost(void* CallbackContext, char* Cause)
 }
 #pragma endregion CALLBACKS
 
-bool AMQTT_Manager_Paho::MQTT_Init(FJsonObjectWrapper& Out_Code, FString In_ClientId, FString In_Address, int32 In_Port)
+void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 In_Port, int32 KeepAliveInterval, bool bUseV5)
+{
+	this->bIsV5 = bUseV5;
+	FJsonObjectWrapper TempCode;
+
+	if (this->Client)
+	{
+		TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+		TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
+		TempCode.JsonObject->SetStringField("Description", "Client already initialized.");
+		TempCode.JsonObject->SetStringField("AdditionalInfo", "");
+
+		DelegateConnection.ExecuteIfBound(false, TempCode);
+		return;
+	}
+
+	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Username, In_Pass, In_ClientId, In_Address, In_Port, KeepAliveInterval]()
+		{
+			MQTTClient TempClient = nullptr;
+			int RetVal = MQTTClient_create(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+
+			if (RetVal != MQTTCLIENT_SUCCESS)
+			{
+				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client.");
+				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
+
+				MQTTClient_destroy(&TempClient);
+
+				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
+					{
+						DelegateConnection.ExecuteIfBound(false, TempCode);
+					}
+				);
+
+				return;
+			}
+
+			RetVal = MQTTClient_setCallbacks(TempClient, this, AMQTT_Manager_Paho::ConnectionLost, AMQTT_Manager_Paho::MessageArrived, AMQTT_Manager_Paho::MessageDelivered);
+
+			if (RetVal != MQTTCLIENT_SUCCESS)
+			{
+				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while setting callbacks.");
+				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
+
+				MQTTClient_destroy(&TempClient);
+
+				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
+					{
+						DelegateConnection.ExecuteIfBound(false, TempCode);
+					}
+				);
+
+				return;
+			}
+
+			this->Connection_Options = MQTTClient_connectOptions_initializer;
+			this->Connection_Options.keepAliveInterval = KeepAliveInterval;
+			this->Connection_Options.cleansession = 1;
+			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Username);
+			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Pass);
+			this->Connection_Options.MQTTVersion = this->bIsV5 ? MQTTVERSION_5 : MQTTVERSION_DEFAULT;
+
+			RetVal = MQTTClient_connect(TempClient, &this->Connection_Options);
+
+			if (RetVal != MQTTCLIENT_SUCCESS)
+			{
+				TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+				TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while making connection.");
+				TempCode.JsonObject->SetStringField("AdditionalInfo", "");
+
+				MQTTClient_destroy(&TempClient);
+
+				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
+					{
+						DelegateConnection.ExecuteIfBound(false, TempCode);
+					}
+				);
+
+				return;
+			}
+
+			TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+			TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
+			TempCode.JsonObject->SetStringField("Description", "Connection successful.");
+			TempCode.JsonObject->SetStringField("AdditionalInfo", "");
+
+			AsyncTask(ENamedThreads::GameThread, [this, DelegateConnection, TempCode, TempClient]()
+				{
+					this->Client = TempClient;
+					DelegateConnection.ExecuteIfBound(false, TempCode);
+				}
+			);
+		}
+	);
+}
+
+void AMQTT_Manager_Paho::MQTT_Destroy()
 {
 	if (this->Client)
 	{
-		Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
-		Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Init");
-		Out_Code.JsonObject->SetStringField("Description", "Client already initialized.");
-		Out_Code.JsonObject->SetStringField("AdditionalInfo", "");
+		return;
+	}	
 
-		return false;
-	}
-
-	this->Connection_Options = MQTTClient_connectOptions_initializer;
-
-	int RetVal = MQTTClient_create(&this->Client, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
-
-	if (RetVal != MQTTCLIENT_SUCCESS)
+	if (MQTTClient_isConnected(this->Client))
 	{
-		Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
-		Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Init");
-		Out_Code.JsonObject->SetStringField("Description", "There was a problem while creating client.");
-		Out_Code.JsonObject->SetStringField("AdditionalInfo", "");
+		if (this->bIsV5)
+		{
+			MQTTClient_disconnect5(this->Client, 10000, MQTTREASONCODE_NORMAL_DISCONNECTION, NULL);
+		}
 
-		return false;
+		else
+		{
+			MQTTClient_disconnect(this->Client, 10000);
+		}	
 	}
 
-	MQTTClient_setCallbacks(this->Client, this, AMQTT_Manager_Paho::ConnectionLost, AMQTT_Manager_Paho::MessageArrived, AMQTT_Manager_Paho::MessageDelivered);
-
-	return true;
+	MQTTClient_destroy(&this->Client);
 }

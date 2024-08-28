@@ -48,6 +48,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Delivered, FPahoDeliv
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Arrived, FPahoArrived, Out_Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Lost, FString, Out_Cause);
 
+UDELEGATE(BlueprintAuthorityOnly)
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegate_Paho_Connection, bool, bIsSuccessfull, FJsonObjectWrapper, Out_Code);
+
 UCLASS()
 class FF_MQTT_API AMQTT_Manager_Paho : public AActor
 {
@@ -58,6 +61,7 @@ private:
 	MQTTClient Client = nullptr;
 	MQTTClient_connectOptions Connection_Options;
 	FString ClientId;
+	bool bIsV5 = false;
 
 #pragma region CALLBACKS
 	static void MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken);
@@ -94,6 +98,9 @@ public:
 	virtual FString GetClientId();
 
 	UFUNCTION(BlueprintCallable)
-	virtual bool MQTT_Init(FJsonObjectWrapper& Out_Code, FString In_ClientId, FString In_Address, int32 In_Port);
+	virtual void MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 In_Port, int32 KeepAliveInterval = 20, bool bUseV5 = false);
+
+	UFUNCTION(BlueprintCallable)
+	virtual void MQTT_Destroy();
 
 };
