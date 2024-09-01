@@ -19,14 +19,18 @@ public class FF_MQTT : ModuleRules
 
 			// C Library
             PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "include"));
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3as-static.lib"));
+
+            // Asynchronous
             //PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3a-static.lib"));
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3cs-static.lib"));
+
+            // Asynchronous with SSL
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3as-static.lib"));
+
+            // Synchronous
             //PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3c-static.lib"));
 
-            // CPP Library
-            PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_cpp", "Win64", "include"));
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_cpp", "Win64", "lib", "paho-mqttpp3-static.lib"));
+            // Synchronous with SSL
+            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3cs-static.lib"));
         }
 
         PublicDependencyModuleNames.AddRange(

@@ -8,7 +8,7 @@
 // Custom Includes.
 #include "MQTT_Includes.h"
 
-#include "MQTT_Manager_Paho.generated.h"
+#include "MQTT_Manager_Paho_Sync.generated.h"
 
 USTRUCT(BlueprintType)
 struct FF_MQTT_API FPahoDelivered
@@ -32,9 +32,6 @@ struct FF_MQTT_API FPahoArrived
 public:
 
 	UPROPERTY(BlueprintReadOnly)
-	bool bIsSuccessful = false;
-
-	UPROPERTY(BlueprintReadOnly)
 	FString Message;
 
 	UPROPERTY(BlueprintReadOnly)
@@ -52,7 +49,7 @@ UDELEGATE(BlueprintAuthorityOnly)
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegate_Paho_Connection, bool, bIsSuccessfull, FJsonObjectWrapper, Out_Code);
 
 UCLASS()
-class FF_MQTT_API AMQTT_Manager_Paho : public AActor
+class FF_MQTT_API AMQTT_Manager_Paho_Sync : public AActor
 {
 	GENERATED_BODY()
 	
@@ -80,7 +77,7 @@ protected:
 public:	
 
 	// Sets default values for this actor's properties.
-	AMQTT_Manager_Paho();
+	AMQTT_Manager_Paho_Sync();
 
 	// Called every frame.
 	virtual void Tick(float DeltaTime) override;
@@ -98,15 +95,15 @@ public:
 	virtual FString GetClientId();
 
 	UFUNCTION(BlueprintCallable)
-	virtual void MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval = 20, EMQTTVERSION In_Version = EMQTTVERSION::Default, bool bUseSSL = true);
+	virtual void MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval = 20, EMQTTVERSION In_Version = EMQTTVERSION::Default, bool bUseSSL = true);
 
 	UFUNCTION(BlueprintCallable)
-	virtual void MQTT_Destroy();
+	virtual void MQTT_Sync_Destroy();
 
 	UFUNCTION(BlueprintCallable)
-	virtual bool MQTT_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS = EMQTTQOS::QoS_0, int32 In_Retained = 0);
+	virtual bool MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS = EMQTTQOS::QoS_0, int32 In_Retained = 0);
 
 	UFUNCTION(BlueprintCallable)
-	virtual bool MQTT_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS = EMQTTQOS::QoS_0);
+	virtual bool MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS = EMQTTQOS::QoS_0);
 
 };

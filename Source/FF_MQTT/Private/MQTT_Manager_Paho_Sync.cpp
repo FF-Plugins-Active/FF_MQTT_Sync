@@ -1,46 +1,46 @@
 //Fill out your copyright notice in the Description page of Project Settings.
 
-#include "MQTT_Manager_Paho.h"
+#include "MQTT_Manager_Paho_Sync.h"
 
 // Sets default values
-AMQTT_Manager_Paho::AMQTT_Manager_Paho()
+AMQTT_Manager_Paho_Sync::AMQTT_Manager_Paho_Sync()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
 // Called when the game starts or when spawned.
-void AMQTT_Manager_Paho::BeginPlay()
+void AMQTT_Manager_Paho_Sync::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
 // Called when the game end or when destroyed.
-void AMQTT_Manager_Paho::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AMQTT_Manager_Paho_Sync::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (this->Client)
 	{
-		this->MQTT_Destroy();
+		this->MQTT_Sync_Destroy();
 	}
 
 	Super::EndPlay(EndPlayReason);
 }
 
 // Called every frame
-void AMQTT_Manager_Paho::Tick(float DeltaTime)
+void AMQTT_Manager_Paho_Sync::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
 
-FString AMQTT_Manager_Paho::GetClientId()
+FString AMQTT_Manager_Paho_Sync::GetClientId()
 {
 	return this->ClientId;
 }
 
 #pragma region CALLBACKS
-void AMQTT_Manager_Paho::MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken)
+void AMQTT_Manager_Paho_Sync::MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken)
 {
-	AMQTT_Manager_Paho* Owner = Cast<AMQTT_Manager_Paho>((AMQTT_Manager_Paho*)CallbackContext);
+	AMQTT_Manager_Paho_Sync* Owner = Cast<AMQTT_Manager_Paho_Sync>((AMQTT_Manager_Paho_Sync*)CallbackContext);
 
 	if (!Owner)
 	{
@@ -58,9 +58,9 @@ void AMQTT_Manager_Paho::MessageDelivered(void* CallbackContext, MQTTClient_deli
 	MQTTClient_deliveryToken TempDeliveryToken = In_DeliveryToken;
 }
 
-int AMQTT_Manager_Paho::MessageArrived(void* CallbackContext, char* TopicName, int TopicLenght, MQTTClient_message* Message)
+int AMQTT_Manager_Paho_Sync::MessageArrived(void* CallbackContext, char* TopicName, int TopicLenght, MQTTClient_message* Message)
 {
-	AMQTT_Manager_Paho* Owner = Cast<AMQTT_Manager_Paho>((AMQTT_Manager_Paho*)CallbackContext);
+	AMQTT_Manager_Paho_Sync* Owner = Cast<AMQTT_Manager_Paho_Sync>((AMQTT_Manager_Paho_Sync*)CallbackContext);
 
 	if (!Owner)
 	{
@@ -80,9 +80,9 @@ int AMQTT_Manager_Paho::MessageArrived(void* CallbackContext, char* TopicName, i
 	return 1;
 }
 
-void AMQTT_Manager_Paho::ConnectionLost(void* CallbackContext, char* Cause)
+void AMQTT_Manager_Paho_Sync::ConnectionLost(void* CallbackContext, char* Cause)
 {
-	AMQTT_Manager_Paho* Owner = Cast<AMQTT_Manager_Paho>((AMQTT_Manager_Paho*)CallbackContext);
+	AMQTT_Manager_Paho_Sync* Owner = Cast<AMQTT_Manager_Paho_Sync>((AMQTT_Manager_Paho_Sync*)CallbackContext);
 
 	if (!Owner)
 	{
@@ -94,10 +94,10 @@ void AMQTT_Manager_Paho::ConnectionLost(void* CallbackContext, char* Cause)
 }
 #pragma endregion CALLBACKS
 
-void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval, EMQTTVERSION In_Version, bool bUseSSL)
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval, EMQTTVERSION In_Version, bool bUseSSL)
 {
 	FJsonObjectWrapper TempCode;
-	TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+	TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	TempCode.JsonObject->SetStringField("FunctionName", "MQTT_Init");
 	TempCode.JsonObject->SetStringField("AdditionalInfo", "");
 
@@ -127,7 +127,7 @@ void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection,
 				return;
 			}
 
-			RetVal = MQTTClient_setCallbacks(TempClient, this, AMQTT_Manager_Paho::ConnectionLost, AMQTT_Manager_Paho::MessageArrived, AMQTT_Manager_Paho::MessageDelivered);
+			RetVal = MQTTClient_setCallbacks(TempClient, this, AMQTT_Manager_Paho_Sync::ConnectionLost, AMQTT_Manager_Paho_Sync::MessageArrived, AMQTT_Manager_Paho_Sync::MessageDelivered);
 
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
@@ -203,7 +203,7 @@ void AMQTT_Manager_Paho::MQTT_Init(FDelegate_Paho_Connection DelegateConnection,
 	);
 }
 
-void AMQTT_Manager_Paho::MQTT_Destroy()
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Destroy()
 {
 	if (!this->Client)
 	{
@@ -226,9 +226,9 @@ void AMQTT_Manager_Paho::MQTT_Destroy()
 	MQTTClient_destroy(&this->Client);
 }
 
-bool AMQTT_Manager_Paho::MQTT_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS, int32 In_Retained)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS, int32 In_Retained)
 {
-	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");
 	Out_Code.JsonObject->SetStringField("AdditionalInfo", "");
 
@@ -269,9 +269,9 @@ bool AMQTT_Manager_Paho::MQTT_Publish(FJsonObjectWrapper& Out_Code, FString In_T
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
 
-bool AMQTT_Manager_Paho::MQTT_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS)
 {
-	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho");
+	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");
 	Out_Code.JsonObject->SetStringField("AdditionalInfo", "");
 
