@@ -60,8 +60,8 @@ private:
 
 	MQTTClient Client = nullptr;
 	MQTTClient_connectOptions Connection_Options;
+	MQTTClient_SSLOptions SSL_Options;
 	FString ClientId;
-	bool bIsV5 = false;
 
 #pragma region CALLBACKS
 	static void MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken);
@@ -98,9 +98,15 @@ public:
 	virtual FString GetClientId();
 
 	UFUNCTION(BlueprintCallable)
-	virtual void MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 In_Port, int32 KeepAliveInterval = 20, bool bUseV5 = false);
+	virtual void MQTT_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval = 20, EMQTTVERSION In_Version = EMQTTVERSION::Default, bool bUseSSL = true);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void MQTT_Destroy();
+
+	UFUNCTION(BlueprintCallable)
+	virtual bool MQTT_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS = EMQTTQOS::QoS_0, int32 In_Retained = 0);
+
+	UFUNCTION(BlueprintCallable)
+	virtual bool MQTT_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS = EMQTTQOS::QoS_0);
 
 };

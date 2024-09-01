@@ -1,7 +1,11 @@
 #pragma once
 
+// UE Includes.
 #include "JsonObjectWrapper.h"
 #include "JsonUtilities.h"
+
+// Custom Includes.
+#include "MQTT_Enums.h"
 
 THIRD_PARTY_INCLUDES_START
 
