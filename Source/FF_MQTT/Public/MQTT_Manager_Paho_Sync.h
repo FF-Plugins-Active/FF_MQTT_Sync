@@ -95,7 +95,7 @@ public:
 	virtual FString GetClientId();
 
 	UFUNCTION(BlueprintCallable)
-	virtual void MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval = 20, EMQTTVERSION In_Version = EMQTTVERSION::Default, bool bUseSSL = true);
+	virtual void MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval = 20, EMQTTVERSION In_Version = EMQTTVERSION::Default, bool bUseSSL = true, bool bUseWebSocket = false);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void MQTT_Sync_Destroy();

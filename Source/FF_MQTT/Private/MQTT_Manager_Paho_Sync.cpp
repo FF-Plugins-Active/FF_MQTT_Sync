@@ -94,7 +94,7 @@ void AMQTT_Manager_Paho_Sync::ConnectionLost(void* CallbackContext, char* Cause)
 }
 #pragma endregion CALLBACKS
 
-void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval, EMQTTVERSION In_Version, bool bUseSSL)
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval, EMQTTVERSION In_Version, bool bUseSSL, bool bUseWebSocket)
 {
 	FJsonObjectWrapper TempCode;
 	TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
@@ -108,10 +108,22 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 		return;
 	}
 
-	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Username, In_Pass, In_ClientId, In_Address, KeepAliveInterval, In_Version, bUseSSL]()
+	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Username, In_Pass, In_ClientId, In_Address, KeepAliveInterval, In_Version, bUseSSL, bUseWebSocket]()
 		{
+			int RetVal = -1;
 			MQTTClient TempClient = nullptr;
-			int RetVal = MQTTClient_create(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+
+			if (In_Version == EMQTTVERSION::V_5)
+			{
+				MQTTClient_createOptions createOpts = MQTTClient_createOptions_initializer;
+				createOpts.MQTTVersion = MQTTVERSION_5;
+				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &createOpts);
+			}
+
+			else
+			{
+				RetVal = MQTTClient_create(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+			}
 			
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
@@ -145,12 +157,31 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 
 			if (In_Version == EMQTTVERSION::V_5)
 			{
-				this->Connection_Options = MQTTClient_connectOptions_initializer5;
+				if (bUseWebSocket)
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer5_ws;
+				}
+
+				else
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer5;
+				}
+
+				this->Connection_Options.cleanstart = 1;
 			}
 
 			else
 			{
-				this->Connection_Options = MQTTClient_connectOptions_initializer;
+				if (bUseWebSocket)
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer_ws;
+				}
+
+				else
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer;
+				}
+
 				this->Connection_Options.cleansession = 1;
 			}
 
@@ -174,7 +205,18 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 				this->Connection_Options.ssl = &this->SSL_Options;
 			}
 
-			RetVal = MQTTClient_connect(TempClient, &this->Connection_Options);
+			if (In_Version == EMQTTVERSION::V_5)
+			{
+				MQTTProperties PropertiesConnection = MQTTProperties_initializer;
+				MQTTProperties PropertiesWill = MQTTProperties_initializer;
+				const MQTTResponse Response = MQTTClient_connect5(TempClient, &this->Connection_Options, &PropertiesConnection, &PropertiesWill);
+				RetVal = Response.reasonCode;
+			}
+
+			else
+			{
+				RetVal = MQTTClient_connect(TempClient, &this->Connection_Options);
+			}
 
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
@@ -247,14 +289,11 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FS
 	int RetVal = -1; 
 	MQTTClient_deliveryToken DeliveryToken;
 	const int32 QoS = FMath::Clamp((int32)In_QoS, 0, 2);
-	
-	// We use this for V5.
-	MQTTResponse Response;
 
 	if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
 	{
-		MQTTProperties Properties_Publish;
-		Response = MQTTClient_publish5(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), QoS, In_Retained, &Properties_Publish, &DeliveryToken);
+		MQTTProperties Properties_Publish = MQTTProperties_initializer;
+		const MQTTResponse Response = MQTTClient_publish5(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), QoS, In_Retained, &Properties_Publish, &DeliveryToken);
 		RetVal = Response.reasonCode;
 	}
 
@@ -289,13 +328,10 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, 
 
 	int RetVal = -1;
 	const int32 QoS = FMath::Clamp((int32)In_QoS, 0, 2);
-	MQTTResponse Response;
-
+	
 	if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
 	{
-		MQTTSubscribe_options Options_Subscribe;
-		MQTTProperties Properties_Subscribe;
-		Response = MQTTClient_subscribe5(this->Client, TCHAR_TO_UTF8(*In_Topic), QoS, &Options_Subscribe, &Properties_Subscribe);
+		const MQTTResponse Response = MQTTClient_subscribe5(this->Client, TCHAR_TO_UTF8(*In_Topic), QoS, NULL, NULL);
 		RetVal = Response.reasonCode;
 	}
 
