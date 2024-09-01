@@ -32,11 +32,6 @@ void AMQTT_Manager_Paho_Sync::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-FString AMQTT_Manager_Paho_Sync::GetClientId()
-{
-	return this->ClientId;
-}
-
 #pragma region CALLBACKS
 void AMQTT_Manager_Paho_Sync::MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken)
 {
@@ -49,7 +44,7 @@ void AMQTT_Manager_Paho_Sync::MessageDelivered(void* CallbackContext, MQTTClient
 
 	const FString DeliveryTokenString = FString::FromInt(In_DeliveryToken);
 
-	FPahoDelivered StrDelivered;
+	FPahoDelivered_Sync StrDelivered;
 	StrDelivered.DeliveredToken = DeliveryTokenString;
 	StrDelivered.bIsSuccessful = true;
 
@@ -67,7 +62,7 @@ int AMQTT_Manager_Paho_Sync::MessageArrived(void* CallbackContext, char* TopicNa
 		return 0;
 	}
 
-	FPahoArrived StrArrived;
+	FPahoArrived_Sync StrArrived;
 	StrArrived.TopicName = UTF8_TO_TCHAR(TopicName);
 	StrArrived.TopicLenght = TopicLenght;
 	StrArrived.Message.AppendChars(UTF8_TO_TCHAR((char*)Message->payload), Message->payloadlen);
@@ -92,9 +87,107 @@ void AMQTT_Manager_Paho_Sync::ConnectionLost(void* CallbackContext, char* Cause)
 	const FString CauseString = UTF8_TO_TCHAR(Cause);
 	Owner->Delegate_Lost.Broadcast(CauseString);
 }
+bool AMQTT_Manager_Paho_Sync::SetSSLParams(FString In_Protocol, FPahoClientParams_Sync In_Params)
+{
+	if (In_Params.Address.IsEmpty())
+	{
+		return false;
+	}
+
+	if (In_Protocol.IsEmpty())
+	{
+		return false;
+	}
+
+	if (In_Protocol == "wss" || In_Protocol == "mqtts" || In_Protocol == "ssl" || In_Protocol == "WSS" || In_Protocol == "MQTTS" || In_Protocol == "SSL")
+	{
+		this->SSL_Options = MQTTClient_SSLOptions_initializer;
+		this->SSL_Options.enableServerCertAuth = 0;
+		this->SSL_Options.verify = 1;
+
+		if (!In_Params.CAPath.IsEmpty() && FPaths::FileExists(In_Params.CAPath))
+		{
+			this->SSL_Options.CApath = TCHAR_TO_UTF8(*In_Params.CAPath);
+		}
+
+		else
+		{
+			this->SSL_Options.CApath = NULL;
+		}
+
+		if (!In_Params.Path_KeyStore.IsEmpty() && FPaths::FileExists(In_Params.Path_KeyStore))
+		{
+			this->SSL_Options.keyStore = TCHAR_TO_UTF8(*In_Params.Path_KeyStore);
+		}
+
+		else
+		{
+			this->SSL_Options.keyStore = NULL;
+		}
+
+		if (!In_Params.Path_TrustStore.IsEmpty() && FPaths::FileExists(In_Params.Path_TrustStore))
+		{
+			this->SSL_Options.trustStore = TCHAR_TO_UTF8(*In_Params.Path_TrustStore);
+		}
+
+		else
+		{
+			this->SSL_Options.trustStore = NULL;
+		}
+
+		if (!In_Params.Path_PrivateKey.IsEmpty() && FPaths::FileExists(In_Params.Path_PrivateKey))
+		{
+
+			this->SSL_Options.privateKey = TCHAR_TO_UTF8(*In_Params.Path_PrivateKey);
+		}
+
+		else
+		{
+			this->SSL_Options.privateKey = NULL;
+		}
+
+		this->SSL_Options.privateKeyPassword = In_Params.PrivateKeyPass.IsEmpty() ? NULL : TCHAR_TO_UTF8(*In_Params.PrivateKeyPass);
+		this->SSL_Options.enabledCipherSuites = In_Params.CipherSuites.IsEmpty() ? NULL : TCHAR_TO_UTF8(*In_Params.CipherSuites);
+
+		return true;
+	}
+
+	else
+	{
+		return false;
+	}
+}
 #pragma endregion CALLBACKS
 
-void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FString In_Username, FString In_Pass, FString In_ClientId, FString In_Address, int32 KeepAliveInterval, EMQTTVERSION In_Version, bool bUseSSL, bool bUseWebSocket)
+FPahoClientParams_Sync AMQTT_Manager_Paho_Sync::GetClientParams()
+{
+	return this->Client_Params;
+}
+
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Destroy()
+{
+	if (!this->Client)
+	{
+		return;
+	}
+
+	if (MQTTClient_isConnected(this->Client))
+	{
+		if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
+		{
+			MQTTClient_disconnect5(this->Client, 10000, MQTTREASONCODE_NORMAL_DISCONNECTION, NULL);
+		}
+
+		else
+		{
+			MQTTClient_disconnect(this->Client, 10000);
+		}
+	}
+
+	MQTTClient_destroy(&this->Client);
+}
+
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync DelegateConnection, FPahoClientParams_Sync In_Params)
 {
 	FJsonObjectWrapper TempCode;
 	TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
@@ -108,23 +201,69 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 		return;
 	}
 
-	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Username, In_Pass, In_ClientId, In_Address, KeepAliveInterval, In_Version, bUseSSL, bUseWebSocket]()
+	if (!In_Params.IsParamsValid())
+	{
+		TempCode.JsonObject->SetStringField("Description", "Address and/or client id should not be empty.");
+		DelegateConnection.ExecuteIfBound(false, TempCode);
+		return;
+	}
+
+	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Params]()
 		{
+			FString Protocol;
+			TArray<FString> URL_Sections = UKismetStringLibrary::ParseIntoArray(In_Params.Address, "://");
+
+			if (URL_Sections.Num() > 1)
+			{
+				Protocol = URL_Sections[0];
+				this->SetSSLParams(Protocol, In_Params);
+			}
+
 			int RetVal = -1;
 			MQTTClient TempClient = nullptr;
 
-			if (In_Version == EMQTTVERSION::V_5)
+			if (In_Params.Version == EMQTTVERSION_Sync::V_5)
 			{
 				MQTTClient_createOptions createOpts = MQTTClient_createOptions_initializer;
 				createOpts.MQTTVersion = MQTTVERSION_5;
-				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &createOpts);
+				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Params.Address), TCHAR_TO_UTF8(*In_Params.ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &createOpts);
+
+				if (Protocol == "wss" || Protocol == "ws")
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer5_ws;
+				}
+
+				else
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer5;
+				}
+
+				this->Connection_Options.cleanstart = 1;
 			}
 
 			else
 			{
-				RetVal = MQTTClient_create(&TempClient, TCHAR_TO_UTF8(*In_Address), TCHAR_TO_UTF8(*In_ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+				RetVal = MQTTClient_create(&TempClient, TCHAR_TO_UTF8(*In_Params.Address), TCHAR_TO_UTF8(*In_Params.ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL);
+
+				if (Protocol == "wss" || Protocol == "ws")
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer_ws;
+				}
+
+				else
+				{
+					this->Connection_Options = MQTTClient_connectOptions_initializer;
+				}
+
+				this->Connection_Options.cleansession = 1;
 			}
-			
+
+			this->Connection_Options.keepAliveInterval = In_Params.KeepAliveInterval;
+			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Params.UserName);
+			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Params.Password);
+			this->Connection_Options.MQTTVersion = (int32)In_Params.Version;
+			this->Connection_Options.ssl = &this->SSL_Options;
+
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
 				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client. Code : " + (FString)FString::FromInt(RetVal));
@@ -155,57 +294,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 				return;
 			}
 
-			if (In_Version == EMQTTVERSION::V_5)
-			{
-				if (bUseWebSocket)
-				{
-					this->Connection_Options = MQTTClient_connectOptions_initializer5_ws;
-				}
-
-				else
-				{
-					this->Connection_Options = MQTTClient_connectOptions_initializer5;
-				}
-
-				this->Connection_Options.cleanstart = 1;
-			}
-
-			else
-			{
-				if (bUseWebSocket)
-				{
-					this->Connection_Options = MQTTClient_connectOptions_initializer_ws;
-				}
-
-				else
-				{
-					this->Connection_Options = MQTTClient_connectOptions_initializer;
-				}
-
-				this->Connection_Options.cleansession = 1;
-			}
-
-			this->Connection_Options.keepAliveInterval = KeepAliveInterval;
-			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Username);
-			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Pass);
-			this->Connection_Options.MQTTVersion = (int32)In_Version;
-
-			if (bUseSSL)
-			{
-				this->SSL_Options = MQTTClient_SSLOptions_initializer;
-				this->SSL_Options.enableServerCertAuth = 0;
-				this->SSL_Options.verify = 1;
-				this->SSL_Options.CApath = NULL;
-				this->SSL_Options.keyStore = NULL;
-				this->SSL_Options.trustStore = NULL;
-				this->SSL_Options.privateKey = NULL;
-				this->SSL_Options.privateKeyPassword = NULL;
-				this->SSL_Options.enabledCipherSuites = NULL;
-
-				this->Connection_Options.ssl = &this->SSL_Options;
-			}
-
-			if (In_Version == EMQTTVERSION::V_5)
+			if (In_Params.Version == EMQTTVERSION_Sync::V_5)
 			{
 				MQTTProperties PropertiesConnection = MQTTProperties_initializer;
 				MQTTProperties PropertiesWill = MQTTProperties_initializer;
@@ -232,10 +321,10 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 				return;
 			}
 
-			AsyncTask(ENamedThreads::GameThread, [this, DelegateConnection, TempCode, TempClient, In_ClientId]()
+			AsyncTask(ENamedThreads::GameThread, [this, DelegateConnection, TempCode, TempClient, In_Params]()
 				{
 					this->Client = TempClient;
-					this->ClientId = In_ClientId;
+					this->Client_Params = In_Params;
 					TempCode.JsonObject->SetStringField("Description", "Connection successful.");
 
 					DelegateConnection.ExecuteIfBound(true, TempCode);
@@ -245,30 +334,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 	);
 }
 
-void AMQTT_Manager_Paho_Sync::MQTT_Sync_Destroy()
-{
-	if (!this->Client)
-	{
-		return;
-	}	
-
-	if (MQTTClient_isConnected(this->Client))
-	{
-		if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
-		{
-			MQTTClient_disconnect5(this->Client, 10000, MQTTREASONCODE_NORMAL_DISCONNECTION, NULL);
-		}
-
-		else
-		{
-			MQTTClient_disconnect(this->Client, 10000);
-		}	
-	}
-
-	MQTTClient_destroy(&this->Client);
-}
-
-bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS, int32 In_Retained)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS_Sync In_QoS, int32 In_Retained)
 {
 	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");
@@ -308,7 +374,7 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FS
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
 
-bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS_Sync In_QoS)
 {
 	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");

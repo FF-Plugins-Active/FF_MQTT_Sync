@@ -4,7 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 
-class FFF_MQTTModule : public IModuleInterface
+class FFF_MQTT_SyncModule : public IModuleInterface
 {
 public:
 

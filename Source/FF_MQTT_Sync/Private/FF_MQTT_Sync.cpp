@@ -1,15 +1,15 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "FF_MQTT.h"
+#include "FF_MQTT_Sync.h"
 
-#define LOCTEXT_NAMESPACE "FFF_MQTTModule"
+#define LOCTEXT_NAMESPACE "FFF_MQTT_SyncModule"
 
-void FFF_MQTTModule::StartupModule()
+void FFF_MQTT_SyncModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 }
 
-void FFF_MQTTModule::ShutdownModule()
+void FFF_MQTT_SyncModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
@@ -17,4 +17,4 @@ void FFF_MQTTModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FFF_MQTTModule, FF_MQTT)
+IMPLEMENT_MODULE(FFF_MQTT_SyncModule, FF_MQTT_Sync)
