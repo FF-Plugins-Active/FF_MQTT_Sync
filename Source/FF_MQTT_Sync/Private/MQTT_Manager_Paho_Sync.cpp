@@ -216,10 +216,10 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 
 			if (In_Params.Version == EMQTTVERSION_Sync::V_5)
 			{
-				MQTTClient_createOptions createOpts = MQTTClient_createOptions_initializer;
-				createOpts.MQTTVersion = MQTTVERSION_5;
+				MQTTClient_createOptions Create_Options = MQTTClient_createOptions_initializer;
+				Create_Options.MQTTVersion = MQTTVERSION_5;
 				
-				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Params.Address), TCHAR_TO_UTF8(*In_Params.ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &createOpts);
+				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Params.Address), TCHAR_TO_UTF8(*In_Params.ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &Create_Options);
 
 				if (Protocol == "wss" || Protocol == "ws")
 				{
@@ -247,9 +247,10 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 				{
 					this->Connection_Options = MQTTClient_connectOptions_initializer;
 				}
+
+				this->Connection_Options.cleansession = 1;
 			}
 
-			this->Connection_Options.cleansession = 1;
 			this->Connection_Options.keepAliveInterval = In_Params.KeepAliveInterval;
 			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Params.UserName);
 			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Params.Password);
@@ -258,7 +259,9 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client. Code : " + (FString)FString::FromInt(RetVal));
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client.");
+				TempCode.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+
 				MQTTClient_destroy(&TempClient);
 
 				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
@@ -274,7 +277,9 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while setting callbacks. Code : " + (FString)FString::FromInt(RetVal));
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while setting callbacks.");
+				TempCode.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+
 				MQTTClient_destroy(&TempClient);
 
 				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
@@ -301,7 +306,9 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
-				TempCode.JsonObject->SetStringField("Description", "There was a problem while making connection. Code : " + (FString)FString::FromInt(RetVal));
+				TempCode.JsonObject->SetStringField("Description", "There was a problem while making connection.");
+				TempCode.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+
 				MQTTClient_destroy(&TempClient);
 
 				AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
@@ -313,12 +320,12 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 				return;
 			}
 
-			AsyncTask(ENamedThreads::GameThread, [this, DelegateConnection, TempCode, TempClient, In_Params]()
-				{
-					this->Client = TempClient;
-					this->Client_Params = In_Params;
-					TempCode.JsonObject->SetStringField("Description", "Connection successful.");
+			this->Client = TempClient;
+			this->Client_Params = In_Params;
+			TempCode.JsonObject->SetStringField("Description", "Connection successful.");
 
+			AsyncTask(ENamedThreads::GameThread, [DelegateConnection, TempCode]()
+				{
 					DelegateConnection.ExecuteIfBound(true, TempCode);
 				}
 			);
@@ -346,23 +353,23 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FS
 
 	int RetVal = -1; 
 	MQTTClient_deliveryToken DeliveryToken;
-	const int32 QoS = FMath::Clamp((int32)In_QoS, 0, 2);
 
 	if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
 	{
 		MQTTProperties Properties_Publish = MQTTProperties_initializer;
-		const MQTTResponse Response = MQTTClient_publish5(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), QoS, In_Retained, &Properties_Publish, &DeliveryToken);
+		const MQTTResponse Response = MQTTClient_publish5(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), (int32)In_QoS, In_Retained, &Properties_Publish, &DeliveryToken);
 		RetVal = Response.reasonCode;
 	}
 
 	else
 	{
-		RetVal = MQTTClient_publish(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), QoS, In_Retained, &DeliveryToken);
+		RetVal = MQTTClient_publish(this->Client, TCHAR_TO_UTF8(*In_Topic), In_Payload.Len(), TCHAR_TO_UTF8(*In_Payload), (int32)In_QoS, In_Retained, &DeliveryToken);
 	}
 
-	const FString DescSring = RetVal == MQTTCLIENT_SUCCESS ? "Payload successfully published." : "There was a problem while publishing payload with these configurations. : " + FString::FromInt(RetVal);
+	const FString DescSring = RetVal == MQTTCLIENT_SUCCESS ? "Payload successfully published." : "There was a problem while publishing payload with these configurations.";
 	Out_Code.JsonObject->SetStringField("Description", DescSring);
-
+	Out_Code.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+	
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
 
@@ -385,21 +392,21 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, 
 	}
 
 	int RetVal = -1;
-	const int32 QoS = FMath::Clamp((int32)In_QoS, 0, 2);
 	
 	if (this->Connection_Options.MQTTVersion == MQTTVERSION_5)
 	{
-		const MQTTResponse Response = MQTTClient_subscribe5(this->Client, TCHAR_TO_UTF8(*In_Topic), QoS, NULL, NULL);
+		const MQTTResponse Response = MQTTClient_subscribe5(this->Client, TCHAR_TO_UTF8(*In_Topic), (int32)In_QoS, NULL, NULL);
 		RetVal = Response.reasonCode;
 	}
 
 	else
 	{
-		RetVal = MQTTClient_subscribe(this->Client, TCHAR_TO_UTF8(*In_Topic), QoS);
+		RetVal = MQTTClient_subscribe(this->Client, TCHAR_TO_UTF8(*In_Topic), (int32)In_QoS);
 	}
 
-	const FString DescSring = RetVal == MQTTCLIENT_SUCCESS ? "Topic successfully subscribed." : "There was a problem while subscribing topic with these configurations. : " + FString::FromInt(RetVal);
+	const FString DescSring = RetVal == MQTTCLIENT_SUCCESS ? "Topic successfully subscribed." : "There was a problem while subscribing topic with these configurations.";
 	Out_Code.JsonObject->SetStringField("Description", DescSring);
-
+	Out_Code.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+	
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
