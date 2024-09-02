@@ -25,43 +25,6 @@ THIRD_PARTY_INCLUDES_END
 #include "MQTT_Sync_Includes.generated.h"
 
 USTRUCT(BlueprintType)
-struct FF_MQTT_SYNC_API FPahoDelivered_Sync
-{
-	GENERATED_BODY()
-
-public:
-
-	UPROPERTY(BlueprintReadOnly)
-	bool bIsSuccessful = false;
-
-	UPROPERTY(BlueprintReadOnly)
-	FString DeliveredToken;
-
-	bool operator == (const FPahoDelivered_Sync& Other) const
-	{
-		return bIsSuccessful == Other.bIsSuccessful && DeliveredToken == Other.DeliveredToken;
-	}
-
-	bool operator != (const FPahoDelivered_Sync& Other) const
-	{
-		return !(*this == Other);
-	}
-};
-
-FORCEINLINE uint32 GetTypeHash(const FPahoDelivered_Sync& Key)
-{
-	uint32 Hash_Success = GetTypeHash(Key.bIsSuccessful);
-	uint32 Hash_DeliveryToken = GetTypeHash(Key.DeliveredToken);
-
-	uint32 GenericHash;
-	FMemory::Memset(&GenericHash, 0, sizeof(uint32));
-	GenericHash = HashCombine(GenericHash, Hash_Success);
-	GenericHash = HashCombine(GenericHash, Hash_DeliveryToken);
-
-	return GenericHash;
-}
-
-USTRUCT(BlueprintType)
 struct FF_MQTT_SYNC_API FPahoArrived_Sync
 {
 	GENERATED_BODY()
@@ -205,7 +168,7 @@ FORCEINLINE uint32 GetTypeHash(const FPahoClientParams_Sync& Key)
 	return GenericHash;
 }
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Delivered_Sync, FPahoDelivered_Sync, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Delivered_Sync, FString, Out_Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Arrived_Sync, FPahoArrived_Sync, Out_Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Lost_Sync, FString, Out_Cause);
 

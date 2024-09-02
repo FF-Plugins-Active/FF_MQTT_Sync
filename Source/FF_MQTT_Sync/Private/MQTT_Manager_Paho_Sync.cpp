@@ -42,15 +42,7 @@ void AMQTT_Manager_Paho_Sync::MessageDelivered(void* CallbackContext, MQTTClient
 		return;
 	}
 
-	const FString DeliveryTokenString = FString::FromInt(In_DeliveryToken);
-
-	FPahoDelivered_Sync StrDelivered;
-	StrDelivered.DeliveredToken = DeliveryTokenString;
-	StrDelivered.bIsSuccessful = true;
-
-	Owner->Delegate_Delivered.Broadcast(StrDelivered);
-
-	MQTTClient_deliveryToken TempDeliveryToken = In_DeliveryToken;
+	Owner->Delegate_Delivered.Broadcast(FString::FromInt(In_DeliveryToken));
 }
 
 int AMQTT_Manager_Paho_Sync::MessageArrived(void* CallbackContext, char* TopicName, int TopicLenght, MQTTClient_message* Message)
@@ -226,6 +218,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 			{
 				MQTTClient_createOptions createOpts = MQTTClient_createOptions_initializer;
 				createOpts.MQTTVersion = MQTTVERSION_5;
+				
 				RetVal = MQTTClient_createWithOptions(&TempClient, TCHAR_TO_UTF8(*In_Params.Address), TCHAR_TO_UTF8(*In_Params.ClientId), MQTTCLIENT_PERSISTENCE_NONE, NULL, &createOpts);
 
 				if (Protocol == "wss" || Protocol == "ws")
@@ -254,10 +247,9 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 				{
 					this->Connection_Options = MQTTClient_connectOptions_initializer;
 				}
-
-				this->Connection_Options.cleansession = 1;
 			}
 
+			this->Connection_Options.cleansession = 1;
 			this->Connection_Options.keepAliveInterval = In_Params.KeepAliveInterval;
 			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Params.UserName);
 			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Params.Password);
