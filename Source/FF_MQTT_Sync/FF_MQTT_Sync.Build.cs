@@ -29,7 +29,6 @@ public class FF_MQTT_Sync : ModuleRules
 			{
 				"Core",
                 "OpenSSL",
-                "FF_MBedTLS",
             }
 			);
 			
