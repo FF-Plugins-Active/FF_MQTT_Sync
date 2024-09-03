@@ -2,7 +2,7 @@
 
 #include "MQTT_Manager_Paho_Sync.h"
 
-// Sets default values
+// Sets default values.
 AMQTT_Manager_Paho_Sync::AMQTT_Manager_Paho_Sync()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -26,7 +26,7 @@ void AMQTT_Manager_Paho_Sync::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-// Called every frame
+// Called every frame.
 void AMQTT_Manager_Paho_Sync::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
