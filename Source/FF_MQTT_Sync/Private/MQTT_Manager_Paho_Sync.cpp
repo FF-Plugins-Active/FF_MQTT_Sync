@@ -410,3 +410,32 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, 
 	
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
+
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Unsubscribe(FJsonObjectWrapper& Out_Code, FString In_Topic)
+{
+	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
+	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Sync_Unsubscribe");
+	Out_Code.JsonObject->SetStringField("AdditionalInfo", "");
+	Out_Code.JsonObject->SetStringField("ErrorCode", "");
+
+	if (!this->Client)
+	{
+		Out_Code.JsonObject->SetStringField("Description", "Client is not valid.");
+		return false;
+	}
+
+	if (!MQTTClient_isConnected(this->Client))
+	{
+		Out_Code.JsonObject->SetStringField("Description", "Client is not connected.");
+		Out_Code.JsonObject->SetStringField("AdditionalInfo", "Try to give some delay before using this or use it after \"Delegate OnConnect\"");
+		return false;
+	}
+
+	const int RetVal = MQTTClient_unsubscribe(this->Client, TCHAR_TO_UTF8(*In_Topic));
+
+	const FString Description = RetVal == MQTTCLIENT_SUCCESS ? "Target successfully unsubscribed." : "There was a problem while unsubscribing target.";
+	Out_Code.JsonObject->SetStringField("Description", Description);
+	Out_Code.JsonObject->SetStringField("ErrorCode", FString::FromInt(RetVal));
+
+	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
+}
