@@ -7,25 +7,12 @@
 #include "Kismet/KismetStringLibrary.h"
 
 // Custom Includes.
-#include "MQTT_Sync_Enums.h"
+#include "MQTT_Enums.h"
 
-THIRD_PARTY_INCLUDES_START
-
-#ifdef _WIN64
-#include "Windows/AllowWindowsPlatformTypes.h"
-#include "MQTTClient.h"
-#include "Windows/HideWindowsPlatformTypes.h"
-
-#else
-#include "MQTTClient.h"
-#endif
-
-THIRD_PARTY_INCLUDES_END
-
-#include "MQTT_Sync_Includes.generated.h"
+#include "MQTT_Includes.generated.h"
 
 USTRUCT(BlueprintType)
-struct FF_MQTT_SYNC_API FPahoArrived_Sync
+struct FF_MQTT_SYNC_API FPahoArrived
 {
 	GENERATED_BODY()
 
@@ -40,18 +27,18 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	int32 TopicLenght = 0;
 
-	bool operator == (const FPahoArrived_Sync& Other) const
+	bool operator == (const FPahoArrived& Other) const
 	{
 		return Message == Other.Message && TopicName == Other.TopicName && TopicLenght == Other.TopicLenght;
 	}
 
-	bool operator != (const FPahoArrived_Sync& Other) const
+	bool operator != (const FPahoArrived& Other) const
 	{
 		return !(*this == Other);
 	}
 };
 
-FORCEINLINE uint32 GetTypeHash(const FPahoArrived_Sync& Key)
+FORCEINLINE uint32 GetTypeHash(const FPahoArrived& Key)
 {
 	uint32 Hash_Message = GetTypeHash(Key.Message);
 	uint32 Hash_TopicName = GetTypeHash(Key.TopicName);
@@ -67,7 +54,7 @@ FORCEINLINE uint32 GetTypeHash(const FPahoArrived_Sync& Key)
 }
 
 USTRUCT(BlueprintType)
-struct FF_MQTT_SYNC_API FPahoClientParams_Sync
+struct FF_MQTT_SYNC_API FPahoClientParams
 {
 	GENERATED_BODY()
 
@@ -107,35 +94,52 @@ public:
 	int32 KeepAliveInterval = 20;
 
 	UPROPERTY(BlueprintReadWrite)
-	EMQTTVERSION_Sync Version = EMQTTVERSION_Sync::Default;
+	EMQTTVERSION Version = EMQTTVERSION::Default;
 
-	bool IsParamsValid()
+	bool IsParamsValid(FString& Out_Code)
 	{
-		if (this->ClientId.IsEmpty() || this->Address.IsEmpty())
+		if (Address.IsEmpty())
 		{
+			Out_Code = "Address is empty.";
 			return false;
 		}
 
-		else
+		if (this->ClientId.IsEmpty())
 		{
-			return true;
+			Out_Code = "ClientId is empty.";
+			return false;
 		}
+
+		Out_Code = "Parameters is valid.";
+		return true;
 	};
 
-	bool operator == (const FPahoClientParams_Sync& Other) const
+	FString GetProtocol()
+	{
+		TArray<FString> URL_Sections = UKismetStringLibrary::ParseIntoArray(Address, "://");
+
+		if (URL_Sections.Num() <= 1)
+		{
+			return "";
+		}
+
+		return URL_Sections[0];
+	}
+
+	bool operator == (const FPahoClientParams& Other) const
 	{
 		return ClientId == Other.ClientId && Address == Other.Address && UserName == Other.UserName && Password == Other.Password && CAPath == Other.CAPath
 			&& Path_KeyStore == Other.Path_KeyStore && Path_TrustStore == Other.Path_TrustStore && Path_PrivateKey == Other.Path_PrivateKey && PrivateKeyPass == Other.PrivateKeyPass
 			&& CipherSuites == Other.CipherSuites && KeepAliveInterval == Other.KeepAliveInterval && Version == Other.Version;
 	}
 
-	bool operator != (const FPahoClientParams_Sync& Other) const
+	bool operator != (const FPahoClientParams& Other) const
 	{
 		return !(*this == Other);
 	}
 };
 
-FORCEINLINE uint32 GetTypeHash(const FPahoClientParams_Sync& Key)
+FORCEINLINE uint32 GetTypeHash(const FPahoClientParams& Key)
 {
 	uint32 Hash_ClientId = GetTypeHash(Key.ClientId);
 	uint32 Hash_Address = GetTypeHash(Key.Address);
@@ -168,9 +172,15 @@ FORCEINLINE uint32 GetTypeHash(const FPahoClientParams_Sync& Key)
 	return GenericHash;
 }
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Delivered_Sync, FString, Out_Result);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Arrived_Sync, FPahoArrived_Sync, Out_Result);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Lost_Sync, FString, Out_Cause);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Delivered, FString, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Arrived, FPahoArrived, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_Lost, FString, Out_Cause);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnConnect, FJsonObjectWrapper, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnConnectFailure, FJsonObjectWrapper, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnDisconnect, FJsonObjectWrapper, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnDisconnectFailure, FJsonObjectWrapper, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnSend, FJsonObjectWrapper, Out_Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDelegate_Paho_OnSendFailure, FJsonObjectWrapper, Out_Result);
 
 UDELEGATE(BlueprintAuthorityOnly)
-DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegate_Paho_Connection_Sync, bool, bIsSuccessfull, FJsonObjectWrapper, Out_Code);
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FDelegate_Paho_Connection, bool, bIsSuccessfull, FJsonObjectWrapper, Out_Code);

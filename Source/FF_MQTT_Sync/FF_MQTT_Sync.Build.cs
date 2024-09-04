@@ -13,22 +13,13 @@ public class FF_MQTT_Sync : ModuleRules
         bEnableUndefinedIdentifierWarnings = false;
         bEnableExceptions = true;
 
-        if (UnrealTargetPlatform.Win64 == Target.Platform)
-        {
-            bUseRTTI = true;
-
-			// C Library
-            PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "include"));
-
-            // Synchronous with SSL
-            PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "ThirdParty", "paho_c", "Win64", "lib", "paho-mqtt3cs-static.lib"));
-        }
-
         PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
                 "OpenSSL",
+                "paho_c",
+                "paho_c_sync",
             }
 			);
 			
@@ -42,6 +33,7 @@ public class FF_MQTT_Sync : ModuleRules
                 "Json",
                 "JsonUtilities",
                 "JsonBlueprintUtilities",
+
             }
 			);
 		

@@ -1,6 +1,6 @@
 //Fill out your copyright notice in the Description page of Project Settings.
 
-#include "MQTT_Manager_Paho_Sync.h"
+#include "MQTT_Manager_Sync.h"
 
 // Sets default values.
 AMQTT_Manager_Paho_Sync::AMQTT_Manager_Paho_Sync()
@@ -54,7 +54,7 @@ int AMQTT_Manager_Paho_Sync::MessageArrived(void* CallbackContext, char* TopicNa
 		return 0;
 	}
 
-	FPahoArrived_Sync StrArrived;
+	FPahoArrived StrArrived;
 	StrArrived.TopicName = UTF8_TO_TCHAR(TopicName);
 	StrArrived.TopicLenght = TopicLenght;
 	StrArrived.Message.AppendChars(UTF8_TO_TCHAR((char*)Message->payload), Message->payloadlen);
@@ -79,7 +79,7 @@ void AMQTT_Manager_Paho_Sync::ConnectionLost(void* CallbackContext, char* Cause)
 	const FString CauseString = UTF8_TO_TCHAR(Cause);
 	Owner->Delegate_Lost.Broadcast(CauseString);
 }
-bool AMQTT_Manager_Paho_Sync::SetSSLParams(FString In_Protocol, FPahoClientParams_Sync In_Params)
+bool AMQTT_Manager_Paho_Sync::SetSSLParams(FString In_Protocol, FPahoClientParams In_Params)
 {
 	if (In_Params.Address.IsEmpty())
 	{
@@ -151,7 +151,7 @@ bool AMQTT_Manager_Paho_Sync::SetSSLParams(FString In_Protocol, FPahoClientParam
 }
 #pragma endregion CALLBACKS
 
-FPahoClientParams_Sync AMQTT_Manager_Paho_Sync::GetClientParams()
+FPahoClientParams AMQTT_Manager_Paho_Sync::GetClientParams()
 {
 	return this->Client_Params;
 }
@@ -179,7 +179,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Destroy()
 	MQTTClient_destroy(&this->Client);
 }
 
-void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync DelegateConnection, FPahoClientParams_Sync In_Params)
+void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateConnection, FPahoClientParams In_Params)
 {
 	FJsonObjectWrapper TempCode;
 	TempCode.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
@@ -193,9 +193,10 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 		return;
 	}
 
-	if (!In_Params.IsParamsValid())
+	FString ParameterReason;
+	if (!In_Params.IsParamsValid(ParameterReason))
 	{
-		TempCode.JsonObject->SetStringField("Description", "Address and/or client id should not be empty.");
+		TempCode.JsonObject->SetStringField("Description", ParameterReason);
 		DelegateConnection.ExecuteIfBound(false, TempCode);
 		return;
 	}
@@ -214,7 +215,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 			int RetVal = -1;
 			MQTTClient TempClient = nullptr;
 
-			if (In_Params.Version == EMQTTVERSION_Sync::V_5)
+			if (In_Params.Version == EMQTTVERSION::V_5)
 			{
 				MQTTClient_createOptions Create_Options = MQTTClient_createOptions_initializer;
 				Create_Options.MQTTVersion = MQTTVERSION_5;
@@ -291,7 +292,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 				return;
 			}
 
-			if (In_Params.Version == EMQTTVERSION_Sync::V_5)
+			if (In_Params.Version == EMQTTVERSION::V_5)
 			{
 				MQTTProperties PropertiesConnection = MQTTProperties_initializer;
 				MQTTProperties PropertiesWill = MQTTProperties_initializer;
@@ -333,7 +334,7 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection_Sync Dele
 	);
 }
 
-bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS_Sync In_QoS, int32 In_Retained)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FString In_Topic, FString In_Payload, EMQTTQOS In_QoS, int32 In_Retained)
 {
 	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");
@@ -373,7 +374,7 @@ bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Publish(FJsonObjectWrapper& Out_Code, FS
 	return RetVal == MQTTCLIENT_SUCCESS ? true : false;
 }
 
-bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS_Sync In_QoS)
+bool AMQTT_Manager_Paho_Sync::MQTT_Sync_Subscribe(FJsonObjectWrapper& Out_Code, FString In_Topic, EMQTTQOS In_QoS)
 {
 	Out_Code.JsonObject->SetStringField("ClassName", "AMQTT_Manager_Paho_Sync");
 	Out_Code.JsonObject->SetStringField("FunctionName", "MQTT_Publish");
