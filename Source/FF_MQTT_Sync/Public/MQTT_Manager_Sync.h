@@ -7,7 +7,7 @@
 
 // Custom Includes.
 #include "MQTT_Includes.h"
-#include "MQTT_Includes_Paho.h"
+#include "Paho_Sync_Includes.h"
 
 #include "MQTT_Manager_Sync.generated.h"
 
@@ -27,7 +27,7 @@ private:
 	static void MessageDelivered(void* CallbackContext, MQTTClient_deliveryToken In_DeliveryToken);
 	static int MessageArrived(void* CallbackContext, char* TopicName, int TopicLenght, MQTTClient_message* Message);
 	static void ConnectionLost(void* CallbackContext, char* Cause);
-	virtual bool SetSSLParams(FString In_Protocol, FPahoClientParams In_Params);
+	virtual bool SetSSLParams(FString In_Protocol, FPahoSslOptions In_Options);
 #pragma endregion CALLBACKS
 
 protected:

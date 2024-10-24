@@ -84,14 +84,8 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 
 	AsyncTask(ENamedThreads::AnyNormalThreadNormalTask, [this, DelegateConnection, TempCode, In_Params]()
 		{
-			FString Protocol;
+			FString Protocol = In_Params.GetProtocol();
 			TArray<FString> URL_Sections = UKismetStringLibrary::ParseIntoArray(In_Params.Address, "://");
-
-			if (URL_Sections.Num() > 1)
-			{
-				Protocol = URL_Sections[0];
-				this->SetSSLParams(Protocol, In_Params);
-			}
 
 			int RetVal = -1;
 			MQTTClient TempClient = nullptr;
@@ -137,8 +131,18 @@ void AMQTT_Manager_Paho_Sync::MQTT_Sync_Init(FDelegate_Paho_Connection DelegateC
 			this->Connection_Options.username = TCHAR_TO_UTF8(*In_Params.UserName);
 			this->Connection_Options.password = TCHAR_TO_UTF8(*In_Params.Password);
 			this->Connection_Options.MQTTVersion = (int32)In_Params.Version;
-			this->Connection_Options.ssl = &this->SSL_Options;
+			
+			if (this->SetSSLParams(Protocol, In_Params.SSL_Options))
+			{
+				this->Connection_Options.ssl = &this->SSL_Options;
+				TempCode.JsonObject->SetStringField("AdditionalInfo", "SSL parameters set.");
+			}
 
+			else
+			{
+				TempCode.JsonObject->SetStringField("AdditionalInfo", "SSL parameters couldn't set.");
+			}
+			
 			if (RetVal != MQTTCLIENT_SUCCESS)
 			{
 				TempCode.JsonObject->SetStringField("Description", "There was a problem while creating client.");
