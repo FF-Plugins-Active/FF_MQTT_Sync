@@ -70,7 +70,7 @@ enum MQTTReasonCodes {
 
 /**
  * Returns a printable string description of an MQTT V5 reason code.
- * @param value an MQTT V5 reason code.
+ *  value an MQTT V5 reason code.
  * @return the printable string description of the input reason code.
  * NULL if the code was not found.
  */

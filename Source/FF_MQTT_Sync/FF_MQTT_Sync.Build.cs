@@ -13,6 +13,8 @@ public class FF_MQTT_Sync : ModuleRules
         UndefinedIdentifierWarningLevel = WarningLevel.Off;
         bEnableExceptions = true;
 
+		// You need to add openssl ios libraries or FF_OpenSSL (private) plugin for iOS support.
+
         PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
@@ -33,7 +35,6 @@ public class FF_MQTT_Sync : ModuleRules
                 "Json",
                 "JsonUtilities",
                 "JsonBlueprintUtilities",
-
             }
 			);
 		
